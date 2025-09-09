@@ -29,6 +29,7 @@ import org.springframework.util.Assert;
  * @param <T> the delegate type.
  *
  * @author Gary Russell
+ * @author Chaedong Im
  *
  */
 public abstract class AbstractFilteringMessageListener<K, V, T>
@@ -36,18 +37,39 @@ public abstract class AbstractFilteringMessageListener<K, V, T>
 
 	private final RecordFilterStrategy<K, V> recordFilterStrategy;
 
+	private boolean skipFiltering = false;
+
 	protected AbstractFilteringMessageListener(T delegate, RecordFilterStrategy<K, V> recordFilterStrategy) {
 		super(delegate);
 		Assert.notNull(recordFilterStrategy, "'recordFilterStrategy' cannot be null");
 		this.recordFilterStrategy = recordFilterStrategy;
 	}
 
-	protected RecordFilterStrategy<K, V> getRecordFilterStrategy() {
+	public RecordFilterStrategy<K, V> getRecordFilterStrategy() {
 		return this.recordFilterStrategy;
 	}
 
+	/**
+	 * Set whether to skip the filtering logic. This is used to prevent duplicate
+	 * filtering when the container handles filtering for RECORD_FILTERED ack mode.
+	 * @param skipFiltering true to skip filtering, false to apply filtering.
+	 * @since 3.4
+	 */
+	public void setSkipFiltering(boolean skipFiltering) {
+		this.skipFiltering = skipFiltering;
+	}
+
+	/**
+	 * Return whether filtering is being skipped.
+	 * @return true if filtering is skipped, false otherwise.
+	 * @since 3.4
+	 */
+	public boolean isSkipFiltering() {
+		return this.skipFiltering;
+	}
+
 	protected boolean filter(ConsumerRecord<K, V> consumerRecord) {
-		return this.recordFilterStrategy.filter(consumerRecord);
+		return !this.skipFiltering && this.recordFilterStrategy.filter(consumerRecord);
 	}
 
 }

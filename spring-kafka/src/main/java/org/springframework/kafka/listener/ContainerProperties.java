@@ -35,6 +35,7 @@ import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservationConvention;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
@@ -55,6 +56,7 @@ import org.springframework.util.CollectionUtils;
  * @author Kyuhyeok Park
  * @author Wang Zhiyang
  * @author Choi Wang Gyu
+ * @author Chaedong Im
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -113,6 +115,14 @@ public class ContainerProperties extends ConsumerProperties {
 		 * sometimes acknowledge on the calling thread and sometimes not.
 		 */
 		MANUAL_IMMEDIATE,
+
+		/**
+		 * Commit the offset after each record is processed by the listener,
+		 * but only for records that are not filtered out by a {@link RecordFilterStrategy}.
+		 * This mode reduces unnecessary offset commits when using record filtering.
+		 * @since 3.4
+		 */
+		RECORD_FILTERED,
 
 	}
 
@@ -218,6 +228,10 @@ public class ContainerProperties extends ConsumerProperties {
 	 * committed when all the records returned by the previous poll have been processed by
 	 * the listener. Results will be indeterminate if you sometimes acknowledge on the
 	 * calling thread and sometimes not.</li>
+	 * <li>RECORD_FILTERED: Commit the offset after each record is processed by the
+	 * listener, but only for records that are not filtered out by a
+	 * {@link org.springframework.kafka.listener.adapter.RecordFilterStrategy}.
+	 * This mode reduces unnecessary offset commits when using record filtering.</li>
 	 * </ul>
 	 */
 	private AckMode ackMode = AckMode.BATCH;

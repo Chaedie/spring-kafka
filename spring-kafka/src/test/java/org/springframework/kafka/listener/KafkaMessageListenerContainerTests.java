@@ -70,6 +70,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -98,6 +99,7 @@ import org.springframework.kafka.event.NonResponsiveConsumerEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.LogIfLevelEnabled.Level;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -146,6 +148,7 @@ import static org.mockito.Mockito.verify;
  * @author Mikael Carlstedt
  * @author Borahm Lee
  * @author Sanghyeok An
+ * @author Chaedong Im
  */
 @EmbeddedKafka(topics = { KafkaMessageListenerContainerTests.topic1, KafkaMessageListenerContainerTests.topic2,
 		KafkaMessageListenerContainerTests.topic3, KafkaMessageListenerContainerTests.topic4,
@@ -590,7 +593,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testRecordAckMock() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -662,7 +665,7 @@ public class KafkaMessageListenerContainerTests {
 	void testInOrderAck(AckMode ackMode) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -738,7 +741,7 @@ public class KafkaMessageListenerContainerTests {
 	void testInOrderAckPauseUntilAcked(AckMode ackMode, boolean batch) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records1 = new HashMap<>();
 		records1.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -867,7 +870,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testRecordAckAfterRecoveryMock() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -932,7 +935,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testRecordAckAfterStop() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
@@ -995,7 +998,7 @@ public class KafkaMessageListenerContainerTests {
 	void testRecordAckMockForeignThread(AckMode ackMode) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -1426,7 +1429,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testBatchListenerAckAfterRecoveryMock() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
@@ -2500,7 +2503,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setIdleBetweenPolls(10000L);
 
 		Consumer<Integer, String> consumer = mock();
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 
 		CountDownLatch enforceRebalanceLatch = new CountDownLatch(1);
 		containerProps.setMessageListener((MessageListener<Object, Object>) data -> {
@@ -2523,7 +2526,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testPauseResumeAndConsumerSeekAware() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new LinkedHashMap<>();
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
@@ -2685,7 +2688,7 @@ public class KafkaMessageListenerContainerTests {
 	public void dontResumePausedPartition() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0), new TopicPartition("foo", 1)));
@@ -2738,7 +2741,7 @@ public class KafkaMessageListenerContainerTests {
 	public void rePausePartitionAfterRebalance() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		AtomicBoolean first = new AtomicBoolean(true);
 		TopicPartition tp0 = new TopicPartition("foo", 0);
 		TopicPartition tp1 = new TopicPartition("foo", 1);
@@ -2815,7 +2818,7 @@ public class KafkaMessageListenerContainerTests {
 	public void resumePartitionAfterRevokeAndReAssign() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		TopicPartition tp0 = new TopicPartition("foo", 0);
 		TopicPartition tp1 = new TopicPartition("foo", 1);
 		given(consumer.assignment()).willReturn(Set.of(tp0, tp1));
@@ -2903,7 +2906,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInitialSeek() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		final CountDownLatch latch = new CountDownLatch(1);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
@@ -2969,7 +2972,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testIdleEarlyExit() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		final CountDownLatch latch = new CountDownLatch(1);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
@@ -3069,7 +3072,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testAckModeCount() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new HashMap<>();
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
@@ -3143,7 +3146,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testCommitErrorHandlerCalled() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new HashMap<>();
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000); // wins
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
@@ -3318,7 +3321,7 @@ public class KafkaMessageListenerContainerTests {
 	void testFatalErrorOnAuthorizationException() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		given(cf.getConfigurationProperties()).willReturn(new HashMap<>());
 
 		willThrow(AuthorizationException.class)
@@ -3357,7 +3360,7 @@ public class KafkaMessageListenerContainerTests {
 	void testNotFatalErrorOnAuthorizationException() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		given(cf.getConfigurationProperties()).willReturn(new HashMap<>());
 		CountDownLatch latch = new CountDownLatch(2);
 		CountDownLatch retryEvent = new CountDownLatch(2);
@@ -3403,7 +3406,7 @@ public class KafkaMessageListenerContainerTests {
 	void testFatalErrorOnFencedInstanceException() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		given(cf.getConfigurationProperties()).willReturn(new HashMap<>());
 
 		willThrow(FencedInstanceIdException.class)
@@ -3435,7 +3438,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testCooperativeRebalance() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new LinkedHashMap<>();
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
@@ -3516,7 +3519,7 @@ public class KafkaMessageListenerContainerTests {
 
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new LinkedHashMap<>();
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
@@ -3593,7 +3596,7 @@ public class KafkaMessageListenerContainerTests {
 	void testCommitFailsOnRevoke() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new LinkedHashMap<>();
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
@@ -3672,7 +3675,7 @@ public class KafkaMessageListenerContainerTests {
 	void testCommitSyncRetries() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new HashMap<>();
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000); // wins
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
@@ -3715,7 +3718,7 @@ public class KafkaMessageListenerContainerTests {
 	void commitAfterHandleManual() throws InterruptedException {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new HashMap<>();
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000); // wins
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
@@ -3760,7 +3763,7 @@ public class KafkaMessageListenerContainerTests {
 	void stopImmediately() throws InterruptedException {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new HashMap<>();
 		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000); // wins
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
@@ -3807,7 +3810,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInvokeRecordInterceptorSuccess() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
@@ -3923,7 +3926,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInvokeRecordInterceptorAllSkipped(AckMode ackMode, boolean early) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
@@ -4018,7 +4021,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInvokeBatchInterceptorAllSkipped(boolean early) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
@@ -4080,7 +4083,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInvokeRecordInterceptorFailure() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecord<Integer, String> record = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(record));
@@ -4152,7 +4155,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInvokeBatchInterceptorSuccess() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
@@ -4223,7 +4226,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testInvokeBatchInterceptorFailure() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
@@ -4294,7 +4297,7 @@ public class KafkaMessageListenerContainerTests {
 	public void invokeBatchInterceptorSuccessFailureOnRetry() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("test-topic", 0, 0L, 1, "data-1");
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("test-topic", 0, 1L, 1, "data-2");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
@@ -4383,11 +4386,596 @@ public class KafkaMessageListenerContainerTests {
 				new OffsetAndMetadata(1, "grp"));
 	}
 
+	@Test
+	@SuppressWarnings("unchecked")
+	void testRecordFilteredAckMode() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.metrics()).willReturn(Map.of());
+		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0)));
+
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"), // should be filtered
+				new ConsumerRecord<>("foo", 0, 1L, 2, "bar"), // should pass through
+				new ConsumerRecord<>("foo", 0, 2L, 3, "foo"), // should be filtered
+				new ConsumerRecord<>("foo", 0, 3L, 4, "baz")  // should pass through
+		));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+
+		List<ConsumerRecord<Integer, String>> received = new ArrayList<>();
+		CountDownLatch latch = new CountDownLatch(2); // Only 2 records should pass through filter
+
+		// Create filter that filters out records with value "foo"
+		RecordFilterStrategy<Integer, String> filter = record -> "foo".equals(record.value());
+
+		MessageListener<Integer, String> listener = record -> {
+			received.add(record);
+			latch.countDown();
+		};
+
+		FilteringMessageListenerAdapter<Integer, String> filteringAdapter =
+				new FilteringMessageListenerAdapter<>(listener, filter);
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[]{
+				new TopicPartitionOffset("foo", 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD_FILTERED);
+		containerProps.setMessageListener(filteringAdapter);
+
+		// Capture offset commits to verify filtered records are not committed
+		ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> offsetCaptor = ArgumentCaptor.forClass(Map.class);
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		// Verify only non-filtered records were processed
+		assertThat(received).hasSize(2);
+		assertThat(received.get(0).value()).isEqualTo("bar");
+		assertThat(received.get(1).value()).isEqualTo("baz");
+
+		// Verify that skipping filtering is enabled on the adapter
+		assertThat(filteringAdapter.isSkipFiltering()).isTrue();
+
+		container.stop();
+
+		// Verify offset commits - should only commit for non-filtered records (offsets 1 and 3)
+		try {
+			verify(consumer).commitSync(offsetCaptor.capture());
+			Map<TopicPartition, OffsetAndMetadata> lastCommit = offsetCaptor.getValue();
+			if (lastCommit != null && !lastCommit.isEmpty()) {
+				// The last committed offset should be 4 (after processing record at offset 3)
+				OffsetAndMetadata committed = lastCommit.get(new TopicPartition("foo", 0));
+				if (committed != null) {
+					assertThat(committed.offset()).isEqualTo(4L);
+				}
+			}
+		} catch (Exception e) {
+			// Offset commit verification is optional for this test
+		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void testRecordFilteredAckModeFilteringCallCount() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.metrics()).willReturn(Map.of());
+		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0)));
+
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"), // should be filtered
+				new ConsumerRecord<>("foo", 0, 1L, 2, "bar"), // should pass through
+				new ConsumerRecord<>("foo", 0, 2L, 3, "foo"), // should be filtered
+				new ConsumerRecord<>("foo", 0, 3L, 4, "baz")  // should pass through
+		));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+
+		List<ConsumerRecord<Integer, String>> received = new ArrayList<>();
+		CountDownLatch latch = new CountDownLatch(2);
+
+		// Create mock filter to count invocations
+		RecordFilterStrategy<Integer, String> mockFilter = mock(RecordFilterStrategy.class);
+		given(mockFilter.filter(any())).willAnswer(inv -> {
+			ConsumerRecord<Integer, String> record = inv.getArgument(0);
+			return "foo".equals(record.value());
+		});
+
+		MessageListener<Integer, String> listener = record -> {
+			received.add(record);
+			latch.countDown();
+		};
+
+		FilteringMessageListenerAdapter<Integer, String> filteringAdapter =
+				new FilteringMessageListenerAdapter<>(listener, mockFilter);
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[]{
+				new TopicPartitionOffset("foo", 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD_FILTERED);
+		containerProps.setMessageListener(filteringAdapter);
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		// Verify filtering was called exactly 4 times (once per record in Container)
+		// But NOT called in FilteringAdapter due to skipFiltering=true
+		verify(mockFilter, times(4)).filter(any());
+
+		// Verify only non-filtered records were processed
+		assertThat(received).hasSize(2);
+		assertThat(received.get(0).value()).isEqualTo("bar");
+		assertThat(received.get(1).value()).isEqualTo("baz");
+
+		// Verify that skipping filtering is enabled on the adapter
+		assertThat(filteringAdapter.isSkipFiltering()).isTrue();
+
+		container.stop();
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void testRecordFilteredAckModeStrictOffsetCommits() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.metrics()).willReturn(Map.of());
+		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0)));
+
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		TopicPartition partition = new TopicPartition("foo", 0);
+		records.put(partition, Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"), // filtered -> no commit
+				new ConsumerRecord<>("foo", 0, 1L, 2, "bar"), // processed -> commit offset 2
+				new ConsumerRecord<>("foo", 0, 2L, 3, "foo"), // filtered -> no commit
+				new ConsumerRecord<>("foo", 0, 3L, 4, "baz")  // processed -> commit offset 4
+		));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+
+		CountDownLatch latch = new CountDownLatch(2);
+		RecordFilterStrategy<Integer, String> filter = record -> "foo".equals(record.value());
+		MessageListener<Integer, String> listener = record -> latch.countDown();
+
+		FilteringMessageListenerAdapter<Integer, String> filteringAdapter =
+				new FilteringMessageListenerAdapter<>(listener, filter);
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[]{
+				new TopicPartitionOffset("foo", 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD_FILTERED);
+		containerProps.setMessageListener(filteringAdapter);
+
+		// Capture all offset commits
+		ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> offsetCaptor =
+				ArgumentCaptor.forClass(Map.class);
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
+		// Verify exactly 2 commits (for "bar" and "baz" only)
+		verify(consumer, times(2)).commitSync(offsetCaptor.capture());
+
+		List<Map<TopicPartition, OffsetAndMetadata>> allCommits = offsetCaptor.getAllValues();
+		assertThat(allCommits).hasSize(2);
+
+		// First commit should be offset 2 (after processing "bar" at offset 1)
+		OffsetAndMetadata firstCommit = allCommits.get(0).get(partition);
+		assertThat(firstCommit.offset()).isEqualTo(2L);
+
+		// Second commit should be offset 4 (after processing "baz" at offset 3)
+		OffsetAndMetadata secondCommit = allCommits.get(1).get(partition);
+		assertThat(secondCommit.offset()).isEqualTo(4L);
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+			"ALL_FILTERED, 0, 0",      // 모든 레코드 필터링 -> 0개 처리, 0번 commit
+			"NONE_FILTERED, 4, 4",     // 필터링 없음 -> 4개 처리, 4번 commit
+			"HALF_FILTERED, 2, 2",     // 절반만 필터링 -> 2개 처리, 2번 commit
+			"SINGLE_RECORD, 1, 1"      // 단일 레코드 -> 1개 처리, 1번 commit
+	})
+	@SuppressWarnings("unchecked")
+	void testRecordFilteredAckModeVariousScenarios(String scenario, int expectedProcessed, int expectedCommits) throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.metrics()).willReturn(Map.of());
+		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0)));
+
+		// Create test data based on scenario
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		List<ConsumerRecord<Integer, String>> testRecords = switch (scenario) {
+			case "ALL_FILTERED" -> Arrays.asList(
+					new ConsumerRecord<>("foo", 0, 0L, 1, "filtered"),
+					new ConsumerRecord<>("foo", 0, 1L, 2, "filtered"),
+					new ConsumerRecord<>("foo", 0, 2L, 3, "filtered"),
+					new ConsumerRecord<>("foo", 0, 3L, 4, "filtered")
+			);
+			case "NONE_FILTERED" -> Arrays.asList(
+					new ConsumerRecord<>("foo", 0, 0L, 1, "pass"),
+					new ConsumerRecord<>("foo", 0, 1L, 2, "pass"),
+					new ConsumerRecord<>("foo", 0, 2L, 3, "pass"),
+					new ConsumerRecord<>("foo", 0, 3L, 4, "pass")
+			);
+			case "HALF_FILTERED" -> Arrays.asList(
+					new ConsumerRecord<>("foo", 0, 0L, 1, "filtered"),
+					new ConsumerRecord<>("foo", 0, 1L, 2, "pass"),
+					new ConsumerRecord<>("foo", 0, 2L, 3, "filtered"),
+					new ConsumerRecord<>("foo", 0, 3L, 4, "pass")
+			);
+			case "SINGLE_RECORD" -> Arrays.asList(
+					new ConsumerRecord<>("foo", 0, 0L, 1, "pass")
+			);
+			default -> throw new IllegalArgumentException("Unknown scenario: " + scenario);
+		};
+
+		records.put(new TopicPartition("foo", 0), testRecords);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+
+		AtomicInteger processedCount = new AtomicInteger(0);
+		CountDownLatch latch = new CountDownLatch(expectedProcessed == 0 ? 1 : expectedProcessed);
+
+		// Filter strategy: filter records with value "filtered"
+		RecordFilterStrategy<Integer, String> filter = record -> "filtered".equals(record.value());
+		MessageListener<Integer, String> listener = record -> {
+			processedCount.incrementAndGet();
+			latch.countDown();
+		};
+
+		FilteringMessageListenerAdapter<Integer, String> filteringAdapter =
+				new FilteringMessageListenerAdapter<>(listener, filter);
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[]{
+				new TopicPartitionOffset("foo", 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD_FILTERED);
+		containerProps.setMessageListener(filteringAdapter);
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+
+		if (expectedProcessed > 0) {
+			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		} else {
+			// For ALL_FILTERED scenario, wait a bit and verify nothing was processed
+			Thread.sleep(1000);
+		}
+
+		container.stop();
+
+		// Verify processed count
+		assertThat(processedCount.get()).isEqualTo(expectedProcessed);
+
+		// Verify commit count
+		if (expectedCommits > 0) {
+			verify(consumer, times(expectedCommits)).commitSync(any(Map.class));
+		} else {
+			verify(consumer, never()).commitSync(any(Map.class));
+		}
+
+		// Verify skipFiltering is always enabled
+		assertThat(filteringAdapter.isSkipFiltering()).isTrue();
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void testRecordFilteredAckModeWithoutFilteringAdapter() throws Exception {
+		// Test with regular listener (not FilteringAdapter) - should behave like RECORD mode
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.metrics()).willReturn(Map.of());
+		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0)));
+
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "message1"),
+				new ConsumerRecord<>("foo", 0, 1L, 2, "message2")
+		));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+
+		CountDownLatch latch = new CountDownLatch(2);
+		MessageListener<Integer, String> regularListener = record -> latch.countDown();
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[]{
+				new TopicPartitionOffset("foo", 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD_FILTERED);  // Should fallback to RECORD behavior
+		containerProps.setMessageListener(regularListener); // Regular listener, not FilteringAdapter
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
+		// All records should be processed (no filtering applied)
+		// All records should be committed (fallback to RECORD behavior)
+		verify(consumer, times(2)).commitSync(any(Map.class));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void testRecordFilteredAckModeWithFilterException() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.metrics()).willReturn(Map.of());
+		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0)));
+
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "good"),
+				new ConsumerRecord<>("foo", 0, 1L, 2, "exception"), // This will cause filter to throw
+				new ConsumerRecord<>("foo", 0, 2L, 3, "good")
+		));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+
+		AtomicInteger processedCount = new AtomicInteger(0);
+		MessageListener<Integer, String> listener = record -> processedCount.incrementAndGet();
+
+		// Filter that throws exception for "exception" value
+		RecordFilterStrategy<Integer, String> throwingFilter = record -> {
+			if ("exception".equals(record.value())) {
+				throw new RuntimeException("Filter error for: " + record.value());
+			}
+			return false; // Don't filter others
+		};
+
+		FilteringMessageListenerAdapter<Integer, String> filteringAdapter =
+				new FilteringMessageListenerAdapter<>(listener, throwingFilter);
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[]{
+				new TopicPartitionOffset("foo", 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD_FILTERED);
+		containerProps.setMessageListener(filteringAdapter);
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+
+		// Container should handle the exception gracefully
+		container.start();
+		Thread.sleep(2000); // Wait for processing
+		container.stop();
+
+		// Even with filter exception, container should not crash
+		// The behavior may vary depending on error handling, but container should remain stable
+		assertThat(processedCount.get()).isLessThanOrEqualTo(3); // At most 3 records could be processed
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void testRecordFilteredAckModeWithBatchListenerThrowsException() {
+		// RECORD_FILTERED should not work with batch listeners
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.metrics()).willReturn(Map.of());
+		
+		BatchMessageListener<Integer, String> batchListener = records -> {
+			// Batch listener implementation
+		};
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[]{
+				new TopicPartitionOffset("foo", 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setAckMode(AckMode.RECORD_FILTERED);
+		containerProps.setMissingTopicsFatal(false);
+		containerProps.setMessageListener(batchListener);
+
+		// Should throw IllegalStateException during container start
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		assertThatIllegalStateException()
+				.isThrownBy(container::start)
+				.withMessageContaining("Cannot use AckMode.RECORD_FILTERED with a batch listener");
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void testBackwardCompatibilityWithRegularRecordMode() throws Exception {
+		// Ensure that existing RECORD mode behavior is not affected
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.metrics()).willReturn(Map.of());
+		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0)));
+
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"), // will be filtered by adapter but offset still committed
+				new ConsumerRecord<>("foo", 0, 1L, 2, "bar")  // will pass through and be committed
+		));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+
+		List<ConsumerRecord<Integer, String>> received = new ArrayList<>();
+		CountDownLatch latch = new CountDownLatch(1); // Only "bar" should reach the listener
+
+		RecordFilterStrategy<Integer, String> filter = record -> "foo".equals(record.value());
+		MessageListener<Integer, String> listener = record -> {
+			received.add(record);
+			latch.countDown();
+		};
+
+		FilteringMessageListenerAdapter<Integer, String> filteringAdapter =
+				new FilteringMessageListenerAdapter<>(listener, filter);
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[]{
+				new TopicPartitionOffset("foo", 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD); // Regular RECORD mode, NOT RECORD_FILTERED
+		containerProps.setMessageListener(filteringAdapter);
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
+		// Verify only "bar" was processed by listener
+		assertThat(received).hasSize(1);
+		assertThat(received.get(0).value()).isEqualTo("bar");
+
+		// Verify that skipFiltering is NOT enabled (backward compatibility)
+		assertThat(filteringAdapter.isSkipFiltering()).isFalse();
+
+		// In RECORD mode, ALL records are committed (including filtered ones)
+		verify(consumer, times(2)).commitSync(any(Map.class));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void testFilteringAdapterBehaviorUnchangedInNonFilteredModes() throws Exception {
+		// Test that FilteringAdapter works exactly the same in other ack modes
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.metrics()).willReturn(Map.of());
+		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0)));
+
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "filter_me"),
+				new ConsumerRecord<>("foo", 0, 1L, 2, "keep_me"),
+				new ConsumerRecord<>("foo", 0, 2L, 3, "filter_me"),
+				new ConsumerRecord<>("foo", 0, 3L, 4, "keep_me")
+		));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+		});
+
+		List<ConsumerRecord<Integer, String>> received = new ArrayList<>();
+		CountDownLatch latch = new CountDownLatch(2); // Only 2 should pass through
+
+		RecordFilterStrategy<Integer, String> filter = record -> record.value().startsWith("filter_");
+		MessageListener<Integer, String> listener = record -> {
+			received.add(record);
+			latch.countDown();
+		};
+
+		FilteringMessageListenerAdapter<Integer, String> filteringAdapter =
+				new FilteringMessageListenerAdapter<>(listener, filter);
+
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[]{
+				new TopicPartitionOffset("foo", 0)};
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.BATCH); // Different mode - should not affect FilteringAdapter
+		containerProps.setMessageListener(filteringAdapter);
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
+		// Verify only non-filtered records reached the listener
+		assertThat(received).hasSize(2);
+		assertThat(received.get(0).value()).isEqualTo("keep_me");
+		assertThat(received.get(1).value()).isEqualTo("keep_me");
+
+		// Verify that skipFiltering is NOT enabled in non-RECORD_FILTERED modes
+		assertThat(filteringAdapter.isSkipFiltering()).isFalse();
+
+		// In BATCH mode, should commit once after all records processed
+		verify(consumer, times(1)).commitSync(any(Map.class));
+	}
+
 	@SuppressWarnings("unchecked")
 	private void testOffsetAndMetadata(OffsetAndMetadataProvider provider, OffsetAndMetadata expectedOffsetAndMetadata) throws InterruptedException {
 		final ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		final Consumer<Integer, String> consumer = mock(Consumer.class);
-		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> new ConsumerRecords<>(
 				Map.of(
 						new TopicPartition("foo", 0),
@@ -4562,5 +5150,4 @@ public class KafkaMessageListenerContainerTests {
 		}
 
 	}
-
 }

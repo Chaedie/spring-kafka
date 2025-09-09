@@ -67,12 +67,12 @@ Access to the `Consumer` object is provided.
 Access to the `Consumer` object is provided.
 
 <5> Use this interface for processing all `ConsumerRecord` instances received from the Kafka consumer `poll()` operation when using auto-commit or one of the container-managed xref:kafka/receiving-messages/message-listener-container.adoc#committing-offsets[commit methods].
-`AckMode.RECORD` is not supported when you use this interface, since the listener is given the complete batch.
+`AckMode.RECORD` and `AckMode.RECORD_FILTERED` are not supported when you use this interface, since the listener is given the complete batch.
 
 <6> Use this interface for processing all `ConsumerRecord` instances received from the Kafka consumer `poll()` operation when using one of the manual xref:kafka/receiving-messages/message-listener-container.adoc#committing-offsets[commit methods].
 
 <7> Use this interface for processing all `ConsumerRecord` instances received from the Kafka consumer `poll()` operation when using auto-commit or one of the container-managed xref:kafka/receiving-messages/message-listener-container.adoc#committing-offsets[commit methods].
-`AckMode.RECORD` is not supported when you use this interface, since the listener is given the complete batch.
+`AckMode.RECORD` and `AckMode.RECORD_FILTERED` are not supported when you use this interface, since the listener is given the complete batch.
 Access to the `Consumer` object is provided.
 
 <8> Use this interface for processing all `ConsumerRecord` instances received from the Kafka consumer `poll()` operation when using one of the manual xref:kafka/receiving-messages/message-listener-container.adoc#committing-offsets[commit methods].
